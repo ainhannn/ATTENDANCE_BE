@@ -53,13 +53,14 @@ public class AttendanceController : ControllerBase
 
         var rs = await _context.Attendances
             .Where(c => c.ClassId == classId)
+            .OrderByDescending(c => c.Time)
             .Join(
                 _context.AttendanceCodes,
                 a => a.Id,
                 ac => ac.AttendanceId,
                 (a, ac) => new { Attendance = a, ac.Code }) // Call x, select AttendanceCode here
             .Join(
-                _context.AttendanceRecords,
+                _context.AttendanceRecords.OrderBy(c => c.Time),
                 x => x.Attendance.Id,
                 ar => ar.AttendanceId,
                 (x, ar) => new { x.Attendance, x.Code, AttendanceRecord = ar}) // Call y, include records here
@@ -139,27 +140,45 @@ public class AttendanceController : ControllerBase
     }
 
     [HttpGet("{classId}/student")]
-    public async Task<ActionResult<IEnumerable<AttendanceRecord>>> GetAttendancesRoleStudent(string UID, int classId)
+    public async Task<ActionResult<IEnumerable<Attendance>>> GetAttendancesRoleStudent(string UID, int classId)
     {
         var id = await _context.Users.Where(u => u.UID == UID).Select(u => u.Id).SingleOrDefaultAsync();
         if (!(id > 0 && await _context.ClassMembers.AnyAsync(c => c.ClassId == classId && c.UserId == id))) 
             return NotFound();
-        
-        return await _context.AttendanceRecords
-            .Where(ar => 
-                ar.UserId == id && // select by userId
-                _context.Attendances.Any(a => a.ClassId == classId && a.Id == ar.AttendanceId)) // and classId
+            
+        var rs = await _context.Attendances
+            .Where(c => c.ClassId == classId)
+            .OrderByDescending(c => c.Time)
+            .Join(
+                _context.AttendanceRecords.Where(ar => ar.UserId == id),
+                a => a.Id,
+                ar => ar.AttendanceId,
+                (a, ar) => new { Attendance = a, AttendanceRecord = ar}) // Call y, include records here
             .Join(
                 _context.Users,
-                ar => ar.UserId,
+                y => y.AttendanceRecord.UserId,
                 u => u.Id,
-                (ar, u) => new AttendanceRecord {
-                    AttendanceId = ar.AttendanceId,
-                    UserId = ar.UserId,
-                    UserName = u.Name,
-                    Time = ar.Time,
-                    Status = ar.Status
-                })
+                (y, u) => new { y.Attendance, y.AttendanceRecord, u.Name}) // Call joinedData, select User.Name here
+            
+            .Select(joinedData => new Attendance {
+                Id = joinedData.Attendance.Id,
+                Time = joinedData.Attendance.Time,
+                ClassId = joinedData.Attendance.ClassId,
+                Times = joinedData.Attendance.Times,
+                AttendanceRecords = new List<AttendanceRecord>
+                {
+                    new AttendanceRecord
+                    {
+                        AttendanceId = joinedData.AttendanceRecord.AttendanceId,
+                        UserId = joinedData.AttendanceRecord.UserId,
+                        Time = joinedData.AttendanceRecord.Time,
+                        Status = joinedData.AttendanceRecord.Status,
+                        UserName = joinedData.Name
+                    }
+                }
+            })
             .ToListAsync();
+
+        return rs;
     }
 }

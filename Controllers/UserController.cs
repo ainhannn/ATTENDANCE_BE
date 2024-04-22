@@ -20,8 +20,8 @@ namespace ATTENDANCE_BE.Controllers
         public async Task<ActionResult<User>> Login(string UID)
         {
             var user = await _context.Users
-                .Include(u => u.CreatedClasses.Where(p => !p.IsArchived))
-                .Include(u => u.JoinedClasses.Where(p => !p.IsArchived))
+                .Include(u => u.CreatedClasses.Where(p => !p.IsArchived).OrderByDescending(c => c.Time))    
+                .Include(u => u.JoinedClasses.Where(p => !p.IsArchived).OrderByDescending(c => c.Time))
                 .Where(u => u.UID == UID)
                 .SingleOrDefaultAsync();
             

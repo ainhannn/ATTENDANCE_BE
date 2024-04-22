@@ -32,6 +32,7 @@ public class ClassController : ControllerBase
 
         dto.Notifications = await _context.Notifications
             .Where(c => c.ClassId == classModel.Id)
+            .OrderByDescending(c => c.Time)
             .Join(
                 _context.Users,
                 n => n.UserId,
@@ -48,6 +49,7 @@ public class ClassController : ControllerBase
         
 
         dto.Members = await _context.Users
+            .OrderBy(c => c.Name)
             .Join(
                 _context.ClassMembers.Where(cm => cm.ClassId == classModel.Id), 
                 u => u.Id, 
