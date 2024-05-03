@@ -3,6 +3,7 @@ using ATTENDANCE_BE.Models;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Internal;
 
 
 namespace ATTENDANCE_BE.Controllers;
@@ -48,13 +49,14 @@ public class ClassController : ControllerBase
             .ToListAsync();
         
 
-        dto.Members = await _context.Users
-            .OrderBy(c => c.Name)
+        dto.Members = await _context.ClassMembers
+            .Where(cm => cm.ClassId == classModel.Id)
             .Join(
-                _context.ClassMembers.Where(cm => cm.ClassId == classModel.Id), 
-                u => u.Id, 
+                _context.Users, 
                 cm => cm.UserId, 
-                (u, cm) => new SimpleUser { Id = u.Id, Name = u.Name })
+                u => u.Id, 
+                (cm, u) => new SimpleUser { Id = u.Id, Name = u.Name })
+            .OrderBy(c => c.Name)
             .ToListAsync();
 
         return Ok(dto);

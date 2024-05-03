@@ -5,7 +5,3 @@ var HostBuilder = Host
 
 var host = HostBuilder.Build();
 host.Run();
-
-// new ATTENDANCE_BE.Test();
-
-
